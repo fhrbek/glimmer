@@ -168,11 +168,11 @@ STATEMENTS.add('scanned-component', (sexp: BaselineSyntax.ScannedComponent, buil
   // (DidCreateElement local:u32)
   // (InvokeStatic #attrs)                        ; NOTE: Still original scope
   // (GetComponentLayout state:u32, layout: u32)  ; stack: [..., ...args, block, InlineBlock]
-  // (RootScope size:u32 caller:true)             ; stack: [..., ...args, block]
+  // (VirtualRootScope caller:true)               ; stack: [..., ...args, block]
   // (GetComponentSelf)                           ; stack: [..., ...args, block, VersionedPathReference]
   // (BindSelf)                                   ; stack: [..., ...args, block]
   // (BindVirtualBlock layout:u32 block:0)        ; stack: [..., ...args]
-  // (BindVirtualNamed symbol:#string) ...        ; stack: [...]
+  // (BindVirtualNamed layout:u32 symbol:#string) ... ; stack: [...]
   // (GetLocal local:u32)                         ; stack: [..., Layout]
   // (InvokeVirtual)                              ; stack: [...]
   // (DidRenderLayout local:u32)                  ; stack: [...]
