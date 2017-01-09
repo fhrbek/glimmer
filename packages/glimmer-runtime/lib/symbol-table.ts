@@ -118,6 +118,10 @@ export class BlockSymbolTable implements IBlockSymbolTable {
     return this.program.getMeta();
   }
 
+  getLocals(): number[] {
+    return this.localsList;
+  }
+
   getSymbolSize(kind: 'local' | 'named' | 'yields'): number {
     return this.sizes[kind];
   }

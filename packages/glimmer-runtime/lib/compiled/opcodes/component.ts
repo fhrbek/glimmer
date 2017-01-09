@@ -140,6 +140,16 @@ APPEND_OPCODES.add(Op.DidCreateElement, (vm, { op1: _state }) => {
   manager.didCreateElement(component, vm.stack().expectConstructing(action), vm.stack().expectOperations(action));
 });
 
+APPEND_OPCODES.add(Op.GetComponentSelf, (vm, { op1: _state }) => {
+  let state = vm.getLocal<ComponentState<Opaque>>(_state);
+  vm.evalStack.push(state.manager.getSelf(state.component));
+});
+
+APPEND_OPCODES.add(Op.GetComponentLayout, (vm, { op1: _state }) => {
+  let { manager, definition, component } = vm.getLocal<ComponentState<Opaque>>(_state);
+  vm.evalStack.push(manager.layoutFor(definition, component, vm.env));
+});
+
 APPEND_OPCODES.add(Op.ComponentLayoutScope, (vm, { op1: _state }) => {
   let { manager, definition, component } = vm.getLocal<ComponentState<Opaque>>(_state);
   let layout = manager.layoutFor(definition, component, vm.env);

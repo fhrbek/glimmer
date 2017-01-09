@@ -587,13 +587,12 @@ export const enum Op {
   /**
    * Operation: Evaluate the block at the top of the stack.
    * Format:
-   *   (InvokeVirtual)
+   *   (InvokeDynamic invoker:#FunctionInvoker)
    * Operand Stack:
-   *   ..., InlineBlock →
+   *   ..., Layout →
    *   ...
    */
-  InvokeVirtual,
-
+  InvokeDynamic,
 
   /**
    * Operation: Jump to the specified offset.
@@ -873,12 +872,22 @@ export const enum Op {
    */
   PushComponentOperations,
 
+  /**
+   * Operation: Push the component's `self` onto the stack.
+   *
+   * Format:
+   *   (GetComponentSelf state:u32)
+   * Operand Stack:
+   *   ... →
+   *   ..., VersionedPathReference
+   */
+  GetComponentSelf,
 
   /**
    * Operation: Get a slice of opcodes to invoke.
    *
    * Format:
-   *   (GetComponentLayout)
+   *   (GetComponentLayout state:u32)
    * Operand Stack:
    *   ... →
    *   ..., Layout
