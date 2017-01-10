@@ -577,7 +577,7 @@ export const enum Op {
    * Format:
    *   (InvokeDynamic invoker:#FunctionInvoker)
    * Operand Stack:
-   *   ..., Layout →
+   *   ..., ...VersionedPathReference, InlineBlock, VersionedPathReference →
    *   ...
    */
   InvokeDynamic,

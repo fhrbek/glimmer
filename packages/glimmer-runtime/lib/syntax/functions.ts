@@ -160,7 +160,7 @@ class InvokeDynamicLayout implements LayoutInvoker {
   invoke(vm: VM, layout: Layout) {
     let table = layout.symbolTable;
     let stack = vm.evalStack;
-    let { names, hasBlock } = this;
+    let { names: callerNames, hasBlock } = this;
 
     let scope = vm.pushRootScope(table.size, true);
     scope.bindSelf(stack.pop<VersionedPathReference<Opaque>>());
@@ -174,9 +174,9 @@ class InvokeDynamicLayout implements LayoutInvoker {
     if (table.getSymbolSize('named') !== 0) {
       let calleeNames = table.getSymbols().named!;
 
-      for (let i=names.length; i>0; i--) {
-        let symbol = calleeNames[names[i]]!;
-        scope.bindSymbol(symbol, stack.pop<VersionedPathReference<Opaque>>())
+      for (let i=callerNames.length; i>0; i--) {
+        let symbol = calleeNames[callerNames[i]]!;
+        scope.bindSymbol(symbol, stack.pop<VersionedPathReference<Opaque>>());
       }
     }
 
@@ -221,9 +221,9 @@ STATEMENTS.add('scanned-component', (sexp: BaselineSyntax.ScannedComponent, buil
   // (DidCreateElement local:u32)
   // (InvokeStatic #attrs)                        ; NOTE: Still original scope
   // (GetComponentSelf)                           ; stack: [..., ...args, block, VersionedPathReference]
-  // (GetComponentLayout state:u32, layout: u32)  ; stack: [..., ...args, block, VersionedPathReference, Layout]
   // (BindSelf)                                   ; stack: [..., ...args, block]
   // (GetLocal local:u32)                         ; stack: [..., Layout]
+  // (GetComponentLayout state:u32, layout: u32)  ; stack: [..., ...args, block, VersionedPathReference, Layout]
   // (InvokeDynamic invoker:#LayoutInvoker)       ; stack: [...]
   // (DidRenderLayout local:u32)                  ; stack: [...]
   // (PopScope)

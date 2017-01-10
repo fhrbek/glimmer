@@ -249,13 +249,13 @@ export class RawInlineBlock {
       let attrs = new RawInlineBlock(this.env, this.table, component.attrs);
       return [['scanned-component', tag, attrs, component.args, child]];
     } else {
-      let buf: BaselineSyntax.AnyStatement[] = [];
-      buf.push(['open-element', tag, []]);
-      buf.push(...component.attrs);
-      buf.push(['flush-element']);
-      buf.push(...component.statements);
-      buf.push(['close-element']);
-      return buf;
+      return [
+        ['open-element', tag, EMPTY_ARRAY],
+        ...component.attrs,
+        ['flush-element'],
+        ...component.statements,
+        ['close-element']
+      ];
     }
   }
 
