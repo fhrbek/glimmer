@@ -76,7 +76,6 @@ class Labels {
     }
 
     for (let { at, breaks, start, end } of this.iters) {
-      debugger;
       opcodes.set(at, opcode(Op.Iterate, this.labels[breaks], this.labels[start], this.labels[end] - 4));
     }
   }
@@ -516,12 +515,8 @@ export abstract class BasicOpcodeBuilder implements SymbolLookup {
     this.opcode(Op.RootScope, symbols, <any>bindCallerScope|0);
   }
 
-  pushVirtualRootScope(bindCallerScope: boolean) {
-    this.opcode(Op.VirtualRootScope, <any>bindCallerScope|0);
-  }
-
   pushChildScope() {
-    this.opcode(Op.PushChildScope);
+    this.opcode(Op.ChildScope);
   }
 
   popScope() {
@@ -719,6 +714,7 @@ export abstract class BasicOpcodeBuilder implements SymbolLookup {
   }
 
   jumpUnless(target: string) {
+    debugger;
     this.push(null);
     this.labels.jump(this.pos, Op.JumpUnless, target);
   }

@@ -43,7 +43,7 @@ APPEND_OPCODES.add(Op.GetLocal, (vm, { op1: position }) => {
   vm.evalStack.push(vm.getLocal(position));
 });
 
-APPEND_OPCODES.add(Op.PushChildScope, vm => vm.pushChildScope());
+APPEND_OPCODES.add(Op.ChildScope, vm => vm.pushChildScope());
 
 APPEND_OPCODES.add(Op.PopScope, vm => vm.popScope());
 

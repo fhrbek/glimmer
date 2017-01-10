@@ -52,7 +52,8 @@ import {
   getDynamicVar,
 
   Template,
-  Layout
+  Layout,
+  EntryPoint
 } from "glimmer-runtime";
 
 import {
@@ -304,14 +305,15 @@ class BasicComponentManager implements ComponentManager<BasicComponent> {
     return new klass(args.named.value());
   }
 
-  layoutFor(definition: BasicComponentDefinition, component: BasicComponent, env: TestEnvironment): CompiledProgram {
+  layoutFor(definition: BasicComponentDefinition, component: BasicComponent, env: TestEnvironment): Layout {
     let layout = env.compiledLayouts[definition.name];
 
     if (layout) {
       return layout;
     }
 
-    return env.compiledLayouts[definition.name] = compileLayout(new BasicComponentLayoutCompiler(definition.layoutString), env);
+    layout = rawCompile(definition.layoutString, { env }).asLayout();
+    return env.compiledLayouts[definition.name] = layout;
   }
 
   getSelf(component: BasicComponent): PathReference<Opaque> {
@@ -712,7 +714,7 @@ export class TestEnvironment extends Environment {
   private partials = dict<PartialDefinition<{}>>();
   private components = dict<ComponentDefinition<any>>();
   private uselessAnchor: HTMLAnchorElement;
-  public compiledLayouts = dict<CompiledProgram>();
+  public compiledLayouts = dict<Layout>();
 
   constructor(options: TestEnvironmentOptions = {
     document: document,
@@ -1084,11 +1086,11 @@ const { defaultBlock, inverseBlock, params, hash } = BaselineSyntax.NestedBlock;
 
 function populateBlocks(blocks: BlockMacros, inlines: InlineMacros): { blocks: BlockMacros, inlines: InlineMacros } {
   blocks.add('identity', (sexp: NestedBlockSyntax, builder: OpcodeBuilderDSL) => {
-    builder.evaluate(sexp[4], null);
+    builder.invokeStatic(sexp[4], null);
   });
 
   blocks.add('render-inverse', (sexp: NestedBlockSyntax, builder: OpcodeBuilderDSL) => {
-    builder.evaluate(sexp[5], null);
+    builder.invokeStatic(sexp[5], null);
   });
 
   blocks.add('-with-dynamic-vars', (sexp, builder) => {
@@ -1099,7 +1101,7 @@ function populateBlocks(blocks: BlockMacros, inlines: InlineMacros): { blocks: B
       b.putArgs(args);
       b.pushDynamicScope();
       b.bindDynamicScope(args.named.keys as string[]);
-      b.evaluate(unwrap(block));
+      b.invokeStatic(unwrap(block), null);
       b.popDynamicScope();
     });
   });

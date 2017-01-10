@@ -17,3 +17,9 @@ export class CompiledProgram extends CompiledBlock {
     super(slice);
   }
 }
+
+export class CompiledLayout extends CompiledBlock {
+  constructor(slice: Slice, public prelude: Slice, public symbols: number) {
+    super(slice);
+  }
+}

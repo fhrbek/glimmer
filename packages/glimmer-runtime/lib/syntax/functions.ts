@@ -155,7 +155,7 @@ STATEMENTS.add('scanned-block', (sexp: BaselineSyntax.ScannedBlock, builder) => 
 });
 
 class InvokeDynamicLayout implements LayoutInvoker {
-  constructor(private names: string[], private hasBlock: boolean) {}
+  constructor(private attrs: InlineBlock, private names: string[], private hasBlock: boolean) {}
 
   invoke(vm: VM, layout: Layout) {
     let table = layout.symbolTable;
@@ -165,17 +165,22 @@ class InvokeDynamicLayout implements LayoutInvoker {
     let scope = vm.pushRootScope(table.size, true);
     scope.bindSelf(stack.pop<VersionedPathReference<Opaque>>());
 
+    scope.bindBlock(table.getSymbol('yields', '%attrs%')!, this.attrs);
+
     if (hasBlock) {
       scope.bindBlock(table.getSymbol('yields', 'default')!, stack.pop<InlineBlock>());
     }
 
-    if (table.getSymbolSize('named') === 0) return;
-    let calleeNames = table.getSymbols().named!;
+    if (table.getSymbolSize('named') !== 0) {
+      let calleeNames = table.getSymbols().named!;
 
-    for (let i=names.length; i>0; i--) {
-      let symbol = calleeNames[names[i]]!;
-      scope.bindSymbol(symbol, stack.pop<VersionedPathReference<Opaque>>())
+      for (let i=names.length; i>0; i--) {
+        let symbol = calleeNames[names[i]]!;
+        scope.bindSymbol(symbol, stack.pop<VersionedPathReference<Opaque>>())
+      }
     }
+
+    vm.invokeBlock(layout);
   }
 }
 
@@ -216,7 +221,7 @@ STATEMENTS.add('scanned-component', (sexp: BaselineSyntax.ScannedComponent, buil
   // (DidCreateElement local:u32)
   // (InvokeStatic #attrs)                        ; NOTE: Still original scope
   // (GetComponentSelf)                           ; stack: [..., ...args, block, VersionedPathReference]
-  // (GetComponentLayout state:u32, layout: u32)  ; stack: [..., ...args, block, VersionedPathReference, InlineBlock]
+  // (GetComponentLayout state:u32, layout: u32)  ; stack: [..., ...args, block, VersionedPathReference, Layout]
   // (BindSelf)                                   ; stack: [..., ...args, block]
   // (GetLocal local:u32)                         ; stack: [..., Layout]
   // (InvokeDynamic invoker:#LayoutInvoker)       ; stack: [...]
@@ -245,11 +250,9 @@ STATEMENTS.add('scanned-component', (sexp: BaselineSyntax.ScannedComponent, buil
   builder.openElementWithOperations(tag);
   builder.didCreateElement(state);
 
-  builder.invokeStatic(attrs.scan(), null);
-
   builder.getComponentSelf(state);
   builder.getComponentLayout(state);
-  builder.invokeDynamic(new InvokeDynamicLayout(names, !!block));
+  builder.invokeDynamic(new InvokeDynamicLayout(attrs.scan(), names, !!block));
 
   builder.didRenderLayout();
   builder.popScope();
@@ -655,7 +658,6 @@ export function populateBuiltins(blocks: Blocks = new Blocks(), inlines: Inlines
     builder.labelled(b => {
       if (_default && inverse) {
         b.jumpUnless('ELSE');
-        builder.getLocal(condition);
         b.invokeStatic(_default, [builder.GetLocal(condition)]);
         b.jump('END');
         b.label('ELSE');
