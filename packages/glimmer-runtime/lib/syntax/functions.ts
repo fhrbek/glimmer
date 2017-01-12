@@ -103,8 +103,18 @@ STATEMENTS.add('any-dynamic-attr', (sexp: BaselineSyntax.AnyDynamicAttr, builder
 });
 
 STATEMENTS.add('open-element', (sexp: BaselineSyntax.OpenPrimitiveElement, builder: OpcodeBuilder) => {
-  LOGGER.trace('open-element statement');
   builder.openPrimitiveElement(sexp[1]);
+});
+
+STATEMENTS.add('open-dynamic-element', (sexp: BaselineSyntax.OpenDynamicElement, builder) => {
+  builder.pushComponentOperations();
+  expr(sexp[1], builder);
+  builder.openDynamicElement();
+});
+
+STATEMENTS.add('open-component-element', (sexp: BaselineSyntax.OpenComponentElement, builder) => {
+  builder.pushComponentOperations();
+  builder.openElementWithOperations(sexp[1]);
 });
 
 STATEMENTS.add('optimized-append', (sexp: BaselineSyntax.OptimizedAppend, builder: OpcodeBuilder) => {
@@ -155,36 +165,43 @@ STATEMENTS.add('scanned-block', (sexp: BaselineSyntax.ScannedBlock, builder) => 
 });
 
 class InvokeDynamicLayout implements LayoutInvoker {
-  constructor(private attrs: InlineBlock, private names: string[], private hasBlock: boolean) {}
+  constructor(private attrs: Option<InlineBlock>, private names: string[]) {}
 
   invoke(vm: VM, layout: Layout) {
     let table = layout.symbolTable;
     let stack = vm.evalStack;
-    let { names: callerNames, hasBlock } = this;
+    let { names: callerNames } = this;
 
     let scope = vm.pushRootScope(table.size, true);
     scope.bindSelf(stack.pop<VersionedPathReference<Opaque>>());
 
     scope.bindBlock(table.getSymbol('yields', '%attrs%')!, this.attrs);
 
-    if (hasBlock) {
-      scope.bindBlock(table.getSymbol('yields', 'default')!, stack.pop<InlineBlock>());
+    let calleeNames = table.getSymbols().named!;
+
+    for (let i=callerNames.length - 1; i>=0; i--) {
+      let symbol = calleeNames && calleeNames[callerNames[i]];
+      let value = stack.pop<VersionedPathReference<Opaque>>()
+
+      if (symbol) scope.bindSymbol(symbol, value);
     }
 
-    if (table.getSymbolSize('named') !== 0) {
-      let calleeNames = table.getSymbols().named!;
+    scope.bindBlock(table.getSymbol('yields', 'default')!, stack.pop<Option<InlineBlock>>());
 
-      for (let i=callerNames.length; i>0; i--) {
-        let symbol = calleeNames[callerNames[i]]!;
-        scope.bindSymbol(symbol, stack.pop<VersionedPathReference<Opaque>>());
-      }
+    let inverse = table.getSymbol('yields', 'inverse');
+    if (inverse !== null) {
+      scope.bindBlock(inverse, null);
     }
 
     vm.invokeBlock(layout);
   }
+
+  toJSON() {
+    return { GlimmerDebug: '<invoke-dynamic-layout>' };
+  }
 }
 
-function compileComponentArgs(args: Option<C.Hash>, builder: OpcodeBuilder) {
+export function compileComponentArgs(args: Option<C.Hash>, builder: OpcodeBuilder) {
   let count: number, slots: Dict<number>, names: string[];
 
   if (args) {
@@ -200,6 +217,34 @@ function compileComponentArgs(args: Option<C.Hash>, builder: OpcodeBuilder) {
 
   return { slots, count, names };
 }
+
+STATEMENTS.add('resolved-component', (sexp: BaselineSyntax.ResolvedComponent, builder) => {
+  let [, definition, attrs, [, hash], block] = sexp;
+
+  let state = builder.local();
+
+  builder.pushComponentManager(definition);
+  builder.setComponentState(state);
+
+  builder.pushBlock(block);
+  let { slots, count, names } = compileComponentArgs(hash, builder);
+
+  builder.pushDynamicScope();
+  builder.pushComponentArgs(0, count, slots);
+  builder.createComponent(state, true, false);
+  builder.registerComponentDestructor(state);
+  builder.beginComponentTransaction();
+
+  builder.getComponentSelf(state);
+  builder.getComponentLayout(state);
+  builder.invokeDynamic(new InvokeDynamicLayout(attrs && attrs.scan(), names, !!block));
+  builder.didCreateElement(state);
+
+  builder.didRenderLayout();
+  builder.popScope();
+  builder.popDynamicScope();
+  builder.commitComponentTransaction();
+});
 
 STATEMENTS.add('scanned-component', (sexp: BaselineSyntax.ScannedComponent, builder) => {
   let [, tag, attrs, rawArgs, rawBlock] = sexp;
@@ -237,22 +282,19 @@ STATEMENTS.add('scanned-component', (sexp: BaselineSyntax.ScannedComponent, buil
   builder.pushComponentManager(definition);
   builder.setComponentState(state);
 
-  let { slots, count, names } = compileComponentArgs(rawArgs, builder);
-
   builder.pushBlock(block);
+  let { slots, count, names } = compileComponentArgs(rawArgs, builder);
 
   builder.pushDynamicScope();
   builder.pushComponentArgs(0, count, slots);
   builder.createComponent(state, true, false);
   builder.registerComponentDestructor(state);
   builder.beginComponentTransaction();
-  builder.pushComponentOperations();
-  builder.openElementWithOperations(tag);
-  builder.didCreateElement(state);
 
   builder.getComponentSelf(state);
   builder.getComponentLayout(state);
   builder.invokeDynamic(new InvokeDynamicLayout(attrs.scan(), names, !!block));
+  builder.didCreateElement(state);
 
   builder.didRenderLayout();
   builder.popScope();
@@ -291,11 +333,11 @@ STATEMENTS.add('dynamic-partial', (sexp: BaselineSyntax.DynamicPartial, builder)
     builder.stopLabels();
 });
 
-STATEMENTS.add('yield', function(this: undefined, sexp: WireFormat.Statements.Yield, builder) {
+STATEMENTS.add('yield', (sexp: WireFormat.Statements.Yield, builder) => {
   let [, to, params] = sexp;
 
   if (params) compileList(params, builder);
-  builder.yield(params ? params.length : 0, to);
+  builder.yield(params, to);
 });
 
 let EXPRESSIONS = new Compilers<SexpExpression, CompiledExpression<Opaque> | void>();

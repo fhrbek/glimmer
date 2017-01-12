@@ -107,7 +107,7 @@ export namespace Statements {
   export type CloseElement  = ['close-element'];
   export type StaticAttr    = ['static-attr', str, Expression, Option<str>];
   export type DynamicAttr   = ['dynamic-attr', str, Expression, Option<str>];
-  export type Yield         = ['yield', YieldTo, Params];
+  export type Yield         = ['yield', YieldTo, Option<Params>];
   export type Partial       = ['partial', Expression];
   export type DynamicArg    = ['dynamic-arg', str, Expression];
   export type StaticArg     = ['static-arg', str, Expression];
@@ -176,6 +176,16 @@ export namespace Statements {
   export function getParameterName(s: Parameter): string {
     return s[1];
   }
+
+  export type ElementHead =
+      Parameter
+    | Modifier
+    | FlushElement
+    ;
+
+  export function isInElementHead(val: Statement): val is ElementHead {
+    return isParameter(val) || isModifier(val) || isFlushElement(val);
+  }
 }
 
 export type Statement = Statements.Statement;
@@ -205,6 +215,7 @@ export interface SerializedComponent extends SerializedBlock {
  */
 export interface SerializedTemplateBlock extends SerializedBlock {
   prelude: Option<Statements.Statement[]>;
+  head: Option<Statements.ElementHead[]>;
   named: string[];
   yields: string[];
   hasPartials: boolean;

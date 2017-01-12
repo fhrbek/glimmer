@@ -13,6 +13,7 @@ import { SymbolTable } from 'glimmer-interfaces';
 import { ComponentBuilder as IComponentBuilder } from '../../opcode-builder';
 import { ComponentBuilder } from '../../compiler';
 import { BaselineSyntax, InlineBlock, Template } from '../../scanner';
+import { compileList } from '../../syntax/functions';
 
 import {
   APPEND_OPCODES,
@@ -230,10 +231,6 @@ export abstract class BasicOpcodeBuilder implements SymbolLookup {
     this.opcode(Op.GetComponentLayout, state);
   }
 
-  openComponent(shadow?: InlineBlock) {
-    this.opcode(Op.OpenComponent, shadow ? this.block(shadow) : 0);
-  }
-
   didCreateElement(state: number) {
     this.opcode(Op.DidCreateElement, state);
   }
@@ -245,10 +242,6 @@ export abstract class BasicOpcodeBuilder implements SymbolLookup {
 
   didRenderLayout() {
     this.opcode(Op.DidRenderLayout);
-  }
-
-  closeComponent() {
-    this.opcode(Op.CloseComponent);
   }
 
   // content
@@ -307,11 +300,7 @@ export abstract class BasicOpcodeBuilder implements SymbolLookup {
     this.opcode(Op.OpenElementWithOperations, this.constants.string(tag));
   }
 
-  openComponentElement(tag: string) {
-    this.opcode(Op.OpenComponentElement, this.constants.string(tag));
-  }
-
-  openDynamicPrimitiveElement() {
+  openDynamicElement() {
     this.opcode(Op.OpenDynamicElement);
   }
 
@@ -450,7 +439,7 @@ export abstract class BasicOpcodeBuilder implements SymbolLookup {
   }
 
   function(f: BaselineSyntax.FunctionExpressionCallback<Opaque>) {
-    return this.Function(f);
+    this.push(this.Function(f));
   }
 
   SetLocal(pos: number) {
@@ -596,10 +585,6 @@ export abstract class BasicOpcodeBuilder implements SymbolLookup {
     this.opcode(Op.Helper, this.func(func));
   }
 
-  putArgs(_args: Represents<CompiledArgs>) {
-    throw new Error('removing PutArgs');
-  }
-
   pushBlock(block: Option<InlineBlock>) {
     this.opcode(Op.PushBlock, this.block(block));
   }
@@ -714,7 +699,6 @@ export abstract class BasicOpcodeBuilder implements SymbolLookup {
   }
 
   jumpUnless(target: string) {
-    debugger;
     this.push(null);
     this.labels.jump(this.pos, Op.JumpUnless, target);
   }
@@ -794,9 +778,11 @@ export default class OpcodeBuilder extends BasicOpcodeBuilder {
     }
   }
 
-  yield(positional: number, to: string) {
+  yield(positional: Option<BaselineSyntax.AnyExpression[]>, to: string) {
     let table = this.symbolTable;
     let yields: Option<number>, partial: Option<number>;
+
+    let count = compileList(positional, this);
 
     if (yields = table.getSymbol('yields', to)) {
       this.opcode(Op.GetBlock, yields);
@@ -806,7 +792,7 @@ export default class OpcodeBuilder extends BasicOpcodeBuilder {
       throw new Error('[BUG] ${to} is not a valid block name.');
     }
 
-    this.openBlock(positional);
+    this.openBlock(count);
     this.closeBlock();
   }
 

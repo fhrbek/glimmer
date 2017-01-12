@@ -69,13 +69,17 @@ export {
   Inlines as InlineMacros,
   NestedBlockSyntax,
   CompileBlockMacro,
-  compileArgs
+  compileArgs,
+  compileComponentArgs,
+  compileList,
+  expr as compileExpression
 } from './lib/syntax/functions';
 
 export {
   BaselineSyntax,
   Layout,
-  EntryPoint
+  EntryPoint,
+  compileStatement
 } from './lib/scanner';
 
 export { PublicVM as VM, UpdatingVM, RenderResult } from './lib/vm';
