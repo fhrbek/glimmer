@@ -19,9 +19,7 @@
     "@glimmer/util": "^0.5.3",
     "@glimmer/reference": "^0.5.3"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist", "index.ts", "lib"],
   "devDependencies": {
     "typescript": "^2.1.4"
   }
